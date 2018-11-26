@@ -61,6 +61,12 @@ test_decode_color () {
 			if (n == 45) return "BMAGENTA";
 			if (n == 46) return "BCYAN";
 			if (n == 47) return "BWHITE";
+			if (n == 91) return "LRED";
+			if (n == 92) return "LGREEN";
+			if (n == 93) return "LYELLOW";
+			if (n == 94) return "LBLUE";
+			if (n == 95) return "LMAGENTA";
+			if (n == 96) return "LCYAN";
 		}
 		{
 			while (match($0, /\033\[[0-9;]*m/) != 0) {

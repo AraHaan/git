@@ -441,4 +441,19 @@ test_expect_success '--merged is incompatible with --no-merged' '
 	test_must_fail git for-each-ref --merged HEAD --no-merged HEAD
 '
 
+test_expect_success '"add" a worktree' '
+	mkdir worktree_dir &&
+	git worktree add -b master_worktree worktree_dir master
+'
+
+test_expect_success 'validate worktree atom' '
+	cat >expect <<-\EOF &&
+	master: checked out in a worktree
+	master_worktree: checked out in a worktree
+	side: not checked out in a worktree
+EOF
+    git for-each-ref --format="%(refname:short): %(if)%(worktree)%(then)checked out in a worktree%(else)not checked out in a worktree%(end)" refs/heads/ >actual &&
+	test_cmp expect actual
+'
+
 test_done

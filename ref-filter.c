@@ -20,6 +20,7 @@
 #include "commit-slab.h"
 #include "commit-graph.h"
 #include "commit-reach.h"
+#include "worktree.h"
 
 static struct ref_msg {
 	const char *gone;
@@ -114,6 +115,7 @@ static struct used_atom {
 		} objectname;
 		struct refname_atom refname;
 		char *head;
+		struct string_list worktree_heads;
 	} u;
 } *used_atom;
 static int used_atom_cnt, need_tagged, need_symref;
@@ -438,6 +440,28 @@ static int head_atom_parser(const struct ref_format *format, struct used_atom *a
 	return 0;
 }
 
+static int worktree_head_atom_parser(const struct ref_format *format,
+									 struct used_atom *atom,
+									 const char *arg,
+									 struct strbuf *unused_err)
+{
+	struct worktree **worktrees = get_worktrees(0);
+	int i;
+
+	string_list_init(&atom->u.worktree_heads, 1);
+
+	for (i = 0; worktrees[i]; i++) {
+		if (worktrees[i]->head_ref)
+			string_list_append(&atom->u.worktree_heads,
+							   worktrees[i]->head_ref);
+	}
+
+	string_list_sort(&atom->u.worktree_heads);
+
+	free_worktrees(worktrees);
+	return 0;
+}
+
 static struct {
 	const char *name;
 	info_source source;
@@ -480,6 +504,7 @@ static struct {
 	{ "flag", SOURCE_NONE },
 	{ "HEAD", SOURCE_NONE, FIELD_STR, head_atom_parser },
 	{ "color", SOURCE_NONE, FIELD_STR, color_atom_parser },
+	{ "worktree", SOURCE_NONE, FIELD_STR, worktree_head_atom_parser },
 	{ "align", SOURCE_NONE, FIELD_STR, align_atom_parser },
 	{ "end", SOURCE_NONE },
 	{ "if", SOURCE_NONE, FIELD_STR, if_atom_parser },
@@ -1618,6 +1643,12 @@ static int populate_value(struct ref_array_item *ref, struct strbuf *err)
 		} else if (!strcmp(name, "HEAD")) {
 			if (atom->u.head && !strcmp(ref->refname, atom->u.head))
 				v->s = xstrdup("*");
+			else
+				v->s = xstrdup(" ");
+			continue;
+		} else if (!strcmp(name, "worktree")) {
+			if (string_list_has_string(&atom->u.worktree_heads, ref->refname))
+				v->s = xstrdup("+");
 			else
 				v->s = xstrdup(" ");
 			continue;
