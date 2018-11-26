@@ -122,7 +122,7 @@ static void imply_interactive(struct rebase_options *opts, const char *option)
 	case REBASE_PRESERVE_MERGES:
 		break;
 	case REBASE_MERGE:
-		/* we silently *upgrade* --merge to --interactive if needed */
+		/* we now implement --merge via --interactive */
 	default:
 		opts->type = REBASE_INTERACTIVE; /* implied */
 		break;
@@ -185,10 +185,7 @@ static int read_basic_state(struct rebase_options *opts)
 	if (get_oid(buf.buf, &opts->orig_head))
 		return error(_("invalid orig-head: '%s'"), buf.buf);
 
-	strbuf_reset(&buf);
-	if (read_one(state_dir_path("quiet", opts), &buf))
-		return -1;
-	if (buf.len)
+	if (file_exists(state_dir_path("quiet", opts)))
 		opts->flags &= ~REBASE_NO_QUIET;
 	else
 		opts->flags |= REBASE_NO_QUIET;
@@ -483,10 +480,6 @@ static int run_specific_rebase(struct rebase_options *opts)
 	case REBASE_AM:
 		backend = "git-rebase--am";
 		backend_func = "git_rebase__am";
-		break;
-	case REBASE_MERGE:
-		backend = "git-rebase--merge";
-		backend_func = "git_rebase__merge";
 		break;
 	case REBASE_PRESERVE_MERGES:
 		backend = "git-rebase--preserve-merges";
@@ -1171,6 +1164,10 @@ int cmd_rebase(int argc, const char **argv, const char *prefix)
 		default:
 			BUG("unhandled rebase type (%d)", options.type);
 		}
+	}
+
+	if (options.type == REBASE_MERGE) {
+		imply_interactive(&options, "--merge");
 	}
 
 	if (options.root && !options.onto_name)
