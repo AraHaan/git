@@ -19,6 +19,7 @@ SYNOPSIS
 'git remote set-url' [--push] <name> <newurl> [<oldurl>]
 'git remote set-url --add' [--push] <name> <newurl>
 'git remote set-url --delete' [--push] <name> <url>
+'git remote set-url --save-to-push' <name> <url>
 'git remote' [-v | --verbose] 'show' [-n] <name>...
 'git remote prune' [-n | --dry-run] <name>...
 'git remote' [-v | --verbose] 'update' [-p | --prune] [(<group> | <remote>)...]
@@ -154,6 +155,10 @@ With `--add`, instead of changing existing URLs, new URL is added.
 With `--delete`, instead of changing existing URLs, all URLs matching
 regex <url> are deleted for remote <name>.  Trying to delete all
 non-push URLs is an error.
++
+With `--save-to-push`, the current URL is saved into the push URL before
+setting the URL to <url>. Note that this command will not work if more than one
+URL is defined because the behavior would be ambiguous.
 +
 Note that the push URL and the fetch URL, even though they can
 be set differently, must still refer to the same place.  What you
