@@ -207,13 +207,27 @@ endif::git-rev-list[]
   than given and there are spaces on its left, use those spaces
 - '%><(<N>)', '%><|(<N>)': similar to '%<(<N>)', '%<|(<N>)'
   respectively, but padding both sides (i.e. the text is centered)
-- %(trailers[:options]): display the trailers of the body as interpreted
+- '%(trailers[:options])': display the trailers of the body as interpreted
   by linkgit:git-interpret-trailers[1]. The `trailers` string may be
-  followed by a colon and zero or more comma-separated options. If the
-  `only` option is given, omit non-trailer lines from the trailer block.
-  If the `unfold` option is given, behave as if interpret-trailer's
-  `--unfold` option was given.  E.g., `%(trailers:only,unfold)` to do
-  both.
+  followed by a colon and zero or more comma-separated options:
+  ** 'only': omit non-trailer lines from the trailer block.
+  ** 'unfold': make it behave as if interpret-trailer's `--unfold`
+     option was given.
+  ** 'key=<K>': only show trailers with specified key. Matching is
+     done case-insensitively and trailing colon is optional. If option
+     is given multiple times only last one is used.
+  ** 'valueonly': skip over the key part of the trailer and only show
+     the its value part.
+  ** 'separator=<SEP>': specifying an alternative separator than the
+     default line feed character. SEP may can contain the literal
+     formatting codes %n and %xNN allowing it to contain characters
+     that are hard to type such as %x00, or comma and end-parenthesis
+     which would break parsing. If option is given multiple times only
+     the last one is used.
+  ** Examples: `%(trailers:only,unfold,separator=%x00)` unfolds and
+     shows all trailer lines separated by NUL character,
+     `%(trailers:key=Reviewed-by,unfold)` unfolds and shows trailer
+     lines with key `Reviewed-by`.
 
 NOTE: Some placeholders may depend on other options given to the
 revision traversal engine. For example, the `%g*` reflog options will

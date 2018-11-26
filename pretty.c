@@ -1075,6 +1075,17 @@ static int match_placeholder_arg(const char *to_parse, const char *candidate,
 	return 0;
 }
 
+struct format_trailer_match_data {
+	const char *trailer;
+	size_t trailer_len;
+};
+
+static int format_trailer_match_cb(const struct strbuf *sb, void *ud)
+{
+	struct format_trailer_match_data *data = ud;
+	return data->trailer_len == sb->len && !strncasecmp (data->trailer, sb->buf, sb->len);
+}
+
 static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 				const char *placeholder,
 				void *context)
@@ -1084,9 +1095,13 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 	const char *msg = c->message;
 	struct commit_list *p;
 	const char *arg;
-	int ch;
+	size_t res;
 
 	/* these are independent of the commit */
+	res = strbuf_expand_literal_cb(sb, placeholder, NULL);
+	if (res)
+		return res;
+
 	switch (placeholder[0]) {
 	case 'C':
 		if (starts_with(placeholder + 1, "(auto)")) {
@@ -1105,16 +1120,6 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 			 */
 			return ret;
 		}
-	case 'n':		/* newline */
-		strbuf_addch(sb, '\n');
-		return 1;
-	case 'x':
-		/* %x00 == NUL, %x0a == LF, etc. */
-		ch = hex2chr(placeholder + 1);
-		if (ch < 0)
-			return 0;
-		strbuf_addch(sb, ch);
-		return 3;
 	case 'w':
 		if (placeholder[1] == '(') {
 			unsigned long width = 0, indent1 = 0, indent2 = 0;
@@ -1313,6 +1318,9 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 
 	if (skip_prefix(placeholder, "(trailers", &arg)) {
 		struct process_trailer_options opts = PROCESS_TRAILER_OPTIONS_INIT;
+		struct format_trailer_match_data filter_data;
+		struct strbuf sepbuf = STRBUF_INIT;
+		size_t ret = 0;
 
 		opts.no_divider = 1;
 
@@ -1323,14 +1331,48 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 					opts.only_trailers = 1;
 				else if (match_placeholder_arg(arg, "unfold", &arg))
 					opts.unfold = 1;
-				else
+				else if (match_placeholder_arg(arg, "valueonly", &arg))
+					opts.value_only = 1;
+				else if (skip_prefix(arg, "key=", &arg)) {
+					const char *end = arg + strcspn(arg, ",)");
+
+					filter_data.trailer = arg;
+					filter_data.trailer_len = end - arg;
+
+					if (filter_data.trailer_len &&
+					    filter_data.trailer[filter_data.trailer_len - 1] == ':')
+						filter_data.trailer_len--;
+
+					opts.filter = format_trailer_match_cb;
+					opts.filter_data = &filter_data;
+					opts.only_trailers = 1;
+
+					arg = end;
+					if (*arg == ',')
+						arg++;
+				} else if (skip_prefix(arg, "separator=", &arg)) {
+					size_t seplen = strcspn(arg, ",)");
+					char *fmt;
+
+					strbuf_reset(&sepbuf);
+					fmt = xstrndup(arg, seplen);
+					strbuf_expand(&sepbuf, fmt, strbuf_expand_literal_cb, NULL);
+					free(fmt);
+					opts.separator = &sepbuf;
+
+					arg += seplen;
+					if (*arg == ',')
+						arg++;
+				} else
 					break;
 			}
 		}
 		if (*arg == ')') {
 			format_trailers_from_commit(sb, msg + c->subject_off, &opts);
-			return arg - placeholder + 1;
+			ret = arg - placeholder + 1;
 		}
+		strbuf_release(&sepbuf);
+		return ret;
 	}
 
 	return 0;	/* unknown placeholder */

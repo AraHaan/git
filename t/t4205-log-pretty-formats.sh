@@ -598,6 +598,84 @@ test_expect_success ':only and :unfold work together' '
 	test_cmp expect actual
 '
 
+test_expect_success 'pretty format %(trailers:key=foo) shows that trailer' '
+	git log --no-walk --pretty="format:%(trailers:key=Acked-by)" >actual &&
+	echo "Acked-by: A U Thor <author@example.com>" >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'pretty format %(trailers:key=foo) is case insensitive' '
+	git log --no-walk --pretty="format:%(trailers:key=AcKed-bY)" >actual &&
+	echo "Acked-by: A U Thor <author@example.com>" >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'pretty format %(trailers:key=foo:) trailing colon also works' '
+	git log --no-walk --pretty="format:%(trailers:key=Acked-by:)" >actual &&
+	echo "Acked-by: A U Thor <author@example.com>" >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success '%(trailers:key=nonexistant) becomes empty' '
+	git log --no-walk --pretty="x%(trailers:key=Nacked-by)x" >actual &&
+	echo "xx" >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success '%(trailers:key=foo) handles multiple lines even if folded' '
+	git log --no-walk --pretty="format:%(trailers:key=Signed-Off-by)" >actual &&
+	grep -v patch.description <trailers | grep -v Acked-by >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success '%(trailers:key=foo,unfold) properly unfolds' '
+	git log --no-walk --pretty="format:%(trailers:key=Signed-Off-by,unfold)" >actual &&
+	unfold <trailers | grep Signed-off-by >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success '%(trailers:key=foo,valueonly) shows only value' '
+	git log --no-walk --pretty="format:%(trailers:key=Acked-by,valueonly)" >actual &&
+	echo "A U Thor <author@example.com>" >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'pretty format %(trailers:separator) changes separator' '
+	git log --no-walk --pretty=format:"X%(trailers:separator=%x00,unfold)X" >actual &&
+	printf "XSigned-off-by: A U Thor <author@example.com>\0Acked-by: A U Thor <author@example.com>\0[ v2 updated patch description ]\0Signed-off-by: A U Thor <author@example.com>X" >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'pretty format %(trailers) combining separator/key/valueonly' '
+	git commit --allow-empty -F - <<-\EOF &&
+	Important fix
+
+	The fix is explained here
+
+	Closes: #1234
+	EOF
+
+	git commit --allow-empty -F - <<-\EOF &&
+	Another fix
+
+	The fix is explained here
+
+	Closes: #567
+	Closes: #890
+	EOF
+
+	git commit --allow-empty -F - <<-\EOF &&
+	Does not close any tickets
+	EOF
+
+	git log --pretty="%s% (trailers:separator=%x2c%x20,key=Closes,valueonly)" HEAD~3.. >actual &&
+	test_write_lines \
+		"Does not close any tickets" \
+		"Another fix #567, #890" \
+		"Important fix #1234" >expect &&
+	test_cmp expect actual
+'
+
 test_expect_success 'trailer parsing not fooled by --- line' '
 	git commit --allow-empty -F - <<-\EOF &&
 	this is the subject
