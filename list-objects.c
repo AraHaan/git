@@ -248,7 +248,8 @@ void mark_edges_uninteresting(struct rev_info *revs, show_edge_fn show_edge)
 		for (i = 0; i < revs->cmdline.nr; i++) {
 			struct object *obj = revs->cmdline.rev[i].item;
 			struct commit *commit = (struct commit *)obj;
-			if (obj->type != OBJ_COMMIT || !(obj->flags & UNINTERESTING))
+			if (!obj || obj->type != OBJ_COMMIT ||
+			    !(obj->flags & UNINTERESTING))
 				continue;
 			mark_tree_uninteresting(revs->repo,
 						get_commit_tree(commit));

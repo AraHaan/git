@@ -366,7 +366,11 @@ test_expect_success 'rev-list accepts missing and promised objects on command li
 
 	git -C repo config core.repositoryformatversion 1 &&
 	git -C repo config extensions.partialclone "arbitrary string" &&
-	git -C repo rev-list --exclude-promisor-objects --objects "$COMMIT" "$TREE" "$BLOB"
+
+	git -C repo rev-list --objects \
+		--exclude-promisor-objects "$COMMIT" "$TREE" "$BLOB" &&
+	git -C repo rev-list --objects-edge-aggressive \
+		--exclude-promisor-objects "$COMMIT" "$TREE" "$BLOB"
 '
 
 test_expect_success 'gc repacks promisor objects separately from non-promisor objects' '
